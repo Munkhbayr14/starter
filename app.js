@@ -7,6 +7,8 @@ var uiController = (function () {
     inputDescription: ".add__description",
     inputValue: ".add__value",
     addBtn: ".add__btn",
+    incomeList: ".income__list",
+    expenseList: ".expenses__list",
   };
   // public function
   return {
@@ -14,22 +16,37 @@ var uiController = (function () {
       return {
         type: document.querySelector(DOMstring.inputType).value, // income or expense
         description: document.querySelector(DOMstring.inputDescription).value, // description тайлбар авах хэсэг
-        value: document.querySelector(DOMstring.inputValue).value, // value буюу мөнгөн дүнг авах
+        value: parseInt(document.querySelector(DOMstring.inputValue).value), // value буюу мөнгөн дүнг авах
       };
     },
+
     //html css-ийн class болон ID-ыг public type-тай буцааж байна
     getDOMstring: function () {
       return DOMstring;
+    },
+    // оруулах утгуудын талбарыг цэвэрлэх
+    clearField: function () {
+      var fields = document.querySelectorAll(
+        DOMstring.inputDescription + ", " + DOMstring.inputValue
+      );
+      var fieldArr = Array.prototype.slice.call(fields);
+      fieldArr.forEach(function (el, index, array) {
+        el.value = "";
+      });
+      fieldArr[0].focus();
+      // for (var i = 0; i < fieldArr.length; i++) {
+      //   fieldArr[i].value = "";
+      // }
     },
     addListItem: function (item, type) {
       // орлого зарлагын харуулсан html-ийг энд бэлтгэнэ
       var html, list;
       if (type === "inc") {
-        list = ".income__list";
+        list = DOMstring.incomeList;
         html =
           '<div class="item clearfix" id="income-%id%"><div class="item__description">$$DESCRIPTION$$</div><div class="right clearfix"><div class="item__value">$$VALUE$$</div><div class="item__delete">            <button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div>        </div></div>';
       } else {
-        list = ".expenses__list";
+        list = DOMstring.expenseList;
         html =
           '<div class="item clearfix" id="expense-%id%"><div class="item__description">$$DESCRIPTION$$</div>          <div class="right clearfix"><div class="item__value">$$VALUE$$</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn">                <i class="ion-ios-close-outline"></i></button></div></div></div>';
       }
@@ -55,6 +72,14 @@ var financeController = (function () {
     this.description = description;
     this.value = value;
   };
+  var calculateTotal = function (type) {
+    sum = 0;
+    data.Item[type].forEach(function () {
+      sum = sum + el.value;
+    });
+    data.total[type] = sum;
+  };
+
   // орлого зарлагийг нэг объектэд хадаглаж байна.
   var data = {
     Item: {
@@ -65,8 +90,31 @@ var financeController = (function () {
       inc: 0,
       exp: 0,
     },
+    tusuv: 0,
+
+    huvi: 0,
   };
   return {
+    // Tusviin tootsooloh function
+    TusuvTootsooloh: function () {
+      //niit orlogo tootsooloh
+      calculateTotal("inc");
+      // niit zarlaga tootsooloh
+      calculateTotal("exp");
+      // niit orlogo zarlaga
+      data.tusuv = data.total.inc - data.total.exp;
+      // niit orlogos garsan zarlagin huvi
+      data.huvi = Math.round((data.total.exp * 100) / data.total.inc);
+    },
+
+    tusviigAvah: function () {
+      return {
+        tusuv: data.tusuv,
+        huvi: data.huvi,
+        totalInc: data.total.inc,
+        totalExp: data.total.exp,
+      };
+    },
     // public data
     addItem: function (type, desc, val) {
       var item, id;
@@ -93,17 +141,24 @@ var appController = (function (uiController, financeController) {
   var ctrlAddItem = function () {
     //1. textBox хэсгээс хэрэглэгчийн оруулсан өгөгдлийг олж авна.
     var input = uiController.getInput();
-    //2.0 олж авсан өгөгдлүүдээ санхүүгийн контролд дамжуулж тэнд хадгална.
-    //2.1 input дотор манай гараас авсан утгууд байгаа. тэрийгээ санхүүгийн [addItem] руу хийж байгаа
-    var item = financeController.addItem(
-      input.type,
-      input.description,
-      input.value
-    );
-    //3. олж авсан өгөгдлүүдээ вэб дээр тохирох хэсэгт харуулна.
-    uiController.addListItem(item, input.type);
-    //4. Төсвийн тооцоолол хийнэ
-    //5.Эцсийн үлдэгдэл тооцоог дэлгэцэнд харуулна.
+    if (input.description !== "" && input.value !== "") {
+      //2.0 олж авсан өгөгдлүүдээ санхүүгийн контролд дамжуулж тэнд хадгална.
+      //2.1 input дотор манай гараас авсан утгууд байгаа. тэрийгээ санхүүгийн [addItem] руу хийж байгаа
+      var item = financeController.addItem(
+        input.type,
+        input.description,
+        input.value
+      );
+      //3. олж авсан өгөгдлүүдээ вэб дээр тохирох хэсэгт харуулна.
+      uiController.addListItem(item, input.type);
+      uiController.clearField();
+      //4. Төсвийн тооцоолол хийнэ
+      financeController.TusuvTootsooloh();
+      //5.Эцсийн үлдэгдэл тооцоо
+      var tusuv = financeController.tusviigAvah();
+      //6. дэлгэцэнд харуулна.
+      console.log(tusuv);
+    }
   };
   // бүх event-ийг нэг функц дотор хийсэн
   var setUpEventListener = function () {
